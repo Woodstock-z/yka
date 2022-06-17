@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        svg {
+            border: 1px solid black;
+            width: 600px;
+            height: 900px;
+        }
+
+        #container {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+        }
+
+        #menue {
+            width: 300px;
+        }
+
+        .m-item {
+            height: 50px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <div id="menue">
+            <div>
+                <button id="download_t">下载文件模板</button>
+            </div>
+            <div class="m-item">
+                <span>上传文件</span>
+                <input type="file" id="file_input">
+            </div>
+            <div class="m-item">
+                <span>选择布局</span>
+                <select name="" id="layout_selector">
+                    <option value="">一列布局</option>
+                    <option value="">两列布局</option>
+                </select>
+            </div>
+            <div class="m-item">
+                <span>选择路线</span>
+                <select name="" id="line_selector">
+                    <option value="1号线" style="color: white;background-color: #0067a1;">1号线</option>
+                    <option value="2号线" style="color: white;background-color: #ec9cbb;">2号线</option>
+                    <option value="3号线" style="color: white;background-color: #d3b466;">3号线</option>
+                    <option value="4号线" style="color: white;background-color: #a6d30b;">4号线</option>
+                    <option value="5号线" style="color: white;background-color: #A43034;">5号线</option>
+                    <option value="6号线" style="color: white;background-color: #007128;">6号线</option>
+                    <option value="7号线" style="color: white;background-color: #eb7c16;">7号线</option>
+                    <option value="8号线" style="color: white;background-color: #9dabaa;">8号线</option>
+                    <option value="11号线" style="color: white;background-color: #f6d300;">11号线</option>
+                    <option value="16号线" style="color: white;background-color: #C24C6D;">16号线</option>
+                    <option value="21号线" style="color: white;background-color: #b2007b;">21号线</option>
+                </select>
+            </div>
+            <div class="m-item">
+                <span>标题</span>
+                <input type="text" placeholder="1号线工作日">
+            </div>
+            <div class="m-item">
+                <span>标题1</span>
+                <input type="text" placeholder="上行方向（周家河-国博中心南）">
+            </div>
+            <div class="m-item">
+                <span>标题2</span>
+                <input type="text" placeholder="下行方向（国博中心南-周家河）">
+            </div>
+
+            <div class="m-item">
+                <span>下载图片</span>
+                <button id="download">下载</button>
+            </div>
+        </div>
+        <div id="canvas"></div>
+    </div>
+
+    <script type="module">
+        import { covertSVG2Image } from "./svg2img.js"
+        /* 下载模板 */
+        document.getElementById("download_t").addEventListener("click", () => {
+            let a = document.createElement('a')
+            a.download = `x号线（模板）.csv`
+            a.href = './data.csv'
+            a.click()
+        })
+        /* 颜色 */
+        const line_map_color = {
+            "1号线": "#0067a1",
+            "2号线": "#ec9cbb",
+            "3号线": "#d3b466",
+            "4号线": "#a6d30b",
+            "5号线": "#A43034",
+            "6号线": "#007128",
+            "7号线": "#eb7c16",
+            "8号线": "#9dabaa",
+            "11号线": "#f6d300",
+            "16号线": "#C24C6D",
+            "21号线": "#b2007b"
+        }
+        let color = "#0067a1";
+        const line_selector = document.getElementById("line_selector");
+        line_selector.addEventListener("change", () => {
+            let value = line_selector.options[line_selector.selectedIndex].value
+            color = line_map_color[value];
+            redraw();
+        });
+        /* 数据 */
+        let data = [];
+        const file_input = document.getElementById("file_input");
+        file_input.addEventListener("change", () => {
+            const reader = new FileReader()
+            reader.readAsText(file_input.files[0], 'gb2312') // input.files[0]为第一个文件
+            reader.onload = () => {
+                // console.log(reader.result)
+                data = reader.result.split("\r\n").filter(d => d != "").slice(1).map(d => d.split(","));
+                redraw();
+            }
+        });
+        /* 标题 */
+        let title = "x号线工作日";
+        let title1 = "上行方向（xx-xx）";
+        let title2 = "下行方向（xx-xx）";
+
+        
+        /* svg */
+        const width = 3000, height = 4500;
+        let margin = {
+            top: 500,
+            bottom: 200
+        }
+        let r1 = 40;
+        let r2 = 18;
+        let font_size = "80px";
+        let font_size1 = "50px";
+        const svg = d3.select("#canvas")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .attr("viewBox", `0 0 ${width} ${height}`);
+        svg
+            .append("image")
+            .attr("x", 50)
+            .attr("y", 0)
+            .attr("width", 212 * 3)
+            .attr("height", 88 * 3)
+            .attr("href", "./logo.jpg");
+
+
+        let logo = new Image()
+        logo.src = './logo.jpg';
+        logo.onload = function () {
+            document.getElementById("download").addEventListener("click", function () {
+                covertSVG2Image(document.getElementsByTagName("svg")[0], title, width, height, logo)
+            })
+        }
+        function redraw() {
+            svg.selectAll("g").remove();
+            let data1 = data.filter(d => d[3] == "上行");
+            let inter = (height - margin.top - margin.bottom) / (data1.length - 1);
+
+            svg.append("g")
+                .append("text")
+                .attr("x", width / 2)
+                .attr("y", 200)
+                .attr("font-size", "100px")
+                .attr("font-weight", 600)
+                .attr("text-anchor", "middle")
+                .text(title)
+            svg.append("g")
+                .append("text")
+                .attr("x", width / 4)
+                .attr("y", 350)
+                .attr("font-size", "85px")
+                .attr("font-weight", 600)
+                .attr("text-anchor", "middle")
+                .text(title1);
+            svg.append("g")
+                .append("line")
+                .attr("x1", 800)
+                .attr("x2", 800)
+                .attr("y1", margin.top)
+                .attr("y2", height - margin.bottom)
+                .attr("stroke-width", r1 / 2)
+                .attr("stroke", color);
+            let gs = svg.append("g")
+                .selectAll("g")
+                .data(data1)
+                .enter()
+                .append("g")
+                .attr("transform", (d, i) => `translate(800,${i * inter + margin.top})`);
+            gs.append("circle")
+                .attr("r", r1)
+                .attr("fill", color);
+            gs.append("circle")
+                .attr("r", r2)
+                .attr("fill", "white");
+            gs.append("text")
+                .attr("x", 120)
+                .attr("y", r1 / 2)
+                .attr("font-size", font_size)
+                .attr("font-weight", 600)
+                .text(d => d[0]);
+            gs.append("text")
+                .attr("font-size", font_size1)
+                .attr("text-anchor", "end")
+                .attr("x", -120)
+                .attr("y", r1 / 2 - 30)
+                .text(d => "首班车 " + d[1]);
+            gs.append("text")
+                .attr("font-size", font_size1)
+                .attr("text-anchor", "end")
+                .attr("x", -120)
+                .attr("y", r1 / 2 + 30)
+                .text(d => "末班车 " + d[2]);
+            // 下行
+            let data2 = data.filter(d => d[3] == "下行");
+            inter = (height - margin.top - margin.bottom) / (data2.length - 1);
+            svg.append("g")
+                .append("text")
+                .attr("x", width / 4 * 3)
+                .attr("y", 350)
+                .attr("font-size", "85px")
+                .attr("font-weight", 600)
+                .attr("text-anchor", "middle")
+                .text(title2);
+
+            let g1 = svg.append("g")
+                .attr("transform", (d, i) => `translate(${width / 2},${margin.top})`);
+            svg.append("g")
+                .append("line")
+                .attr("x1", width - 800)
+                .attr("x2", width - 800)
+                .attr("y1", margin.top)
+                .attr("y2", height - margin.bottom)
+                .attr("stroke-width", r1 / 2)
+                .attr("stroke", color);
+            let gs1 = svg.append("g")
+                .selectAll("g")
+                .data(data2)
+                .enter()
+                .append("g")
+                .attr("transform", (d, i) => `translate(${width - 800},${i * inter + margin.top})`);
+            gs1.append("circle")
+                .attr("r", r1)
+                .attr("fill", color);
+            gs1.append("circle")
+                .attr("r", r2)
+                .attr("fill", "white");
+            gs1.append("text")
+                .attr("x", -120)
+                .attr("y", r1 / 2)
+                .attr("text-anchor", "end")
+                .attr("font-size", font_size)
+                .attr("font-weight", 600)
+                .text(d => d[0]);
+            gs1.append("text")
+                .attr("font-size", font_size1)
+                .attr("x", 120)
+                .attr("y", r1 / 2 - 50)
+                .text(d => "首班车 " + d[1]);
+            gs1.append("text")
+                .attr("font-size", font_size1)
+                .attr("x", 120)
+                .attr("y", r1 / 2 + 50)
+                .text(d => "末班车 " + d[2]);
+
+        }
+        /* Promise.all([d3.csv("16_gzr_1.csv"), d3.csv("16_gzr_1.csv")]).then(([res, res1]) => {
+
+            console.log(res, res1)
+            let inter = (height - margin.top - margin.bottom) / (res.length - 1);
+            let r1 = 40;
+            let r2 = 18;
+            let font_size = "80px";
+            let font_size1 = "50px";
+            svg.append("g")
+                .append("image")
+                .attr("x", 50)
+                .attr("y", 0)
+                .attr("width", 212 * 3)
+                .attr("height", 88 * 3)
+                .attr("href", "./logo.jpg")
+
+            svg.append("g")
+                .append("text")
+                .attr("x", width / 2)
+                .attr("y", 200)
+                .attr("font-size", "100px")
+                .attr("font-weight", 600)
+                .attr("text-anchor", "middle")
+                .text("1号线工作日")
+            svg.append("g")
+                .append("text")
+                .attr("x", width / 4)
+                .attr("y", 350)
+                .attr("font-size", "85px")
+                .attr("font-weight", 600)
+                .attr("text-anchor", "middle")
+                .text("上行方向（周家河-国博中心南）");
+            svg.append("g")
+                .append("line")
+                .attr("x1", 800)
+                .attr("x2", 800)
+                .attr("y1", margin.top)
+                .attr("y2", height - margin.bottom)
+                .attr("stroke-width", r1 / 2)
+                .attr("stroke", color);
+            let gs = svg.append("g")
+                .selectAll("g")
+                .data(res)
+                .enter()
+                .append("g")
+                .attr("transform", (d, i) => `translate(800,${i * inter + margin.top})`);
+            gs.append("circle")
+                .attr("r", r1)
+                .attr("fill", color);
+            gs.append("circle")
+                .attr("r", r2)
+                .attr("fill", "white");
+            gs.append("text")
+                .attr("x", 120)
+                .attr("y", r1 / 2)
+                .attr("font-size", font_size)
+                .attr("font-weight", 600)
+                .text(d => d["车站"]);
+            gs.append("text")
+                .attr("font-size", font_size1)
+                .attr("text-anchor", "end")
+                .attr("x", -120)
+                .attr("y", r1 / 2 - 30)
+                .text(d => "首班车 " + d["首班车"]);
+            gs.append("text")
+                .attr("font-size", font_size1)
+                .attr("text-anchor", "end")
+                .attr("x", -120)
+                .attr("y", r1 / 2 + 30)
+                .text(d => "末班车 " + d["末班车"]);
+
+
+            inter = (height - margin.top - margin.bottom) / (res1.length - 1);
+
+            svg.append("g")
+                .append("text")
+                .attr("x", width / 4 * 3)
+                .attr("y", 350)
+                .attr("font-size", "85px")
+                .attr("font-weight", 600)
+                .attr("text-anchor", "middle")
+                .text("下行方向（国博中心南-周家河）");
+
+            let g1 = svg.append("g")
+                .attr("transform", (d, i) => `translate(${width / 2},${margin.top})`);
+            svg.append("g")
+                .append("line")
+                .attr("x1", width - 800)
+                .attr("x2", width - 800)
+                .attr("y1", margin.top)
+                .attr("y2", height - margin.bottom)
+                .attr("stroke-width", r1 / 2)
+                .attr("stroke", color);
+            let gs1 = svg.append("g")
+                .selectAll("g")
+                .data(res1)
+                .enter()
+                .append("g")
+                .attr("transform", (d, i) => `translate(${width - 800},${i * inter + margin.top})`);
+            gs1.append("circle")
+                .attr("r", r1)
+                .attr("fill", color);
+            gs1.append("circle")
+                .attr("r", r2)
+                .attr("fill", "white");
+            gs1.append("text")
+                .attr("x", -120)
+                .attr("y", r1 / 2)
+                .attr("text-anchor", "end")
+                .attr("font-size", font_size)
+                .attr("font-weight", 600)
+                .text(d => d["车站"]);
+            gs1.append("text")
+                .attr("font-size", font_size1)
+                .attr("x", 120)
+                .attr("y", r1 / 2 - 50)
+                .text(d => "首班车 " + d["首班车"]);
+            gs1.append("text")
+                .attr("font-size", font_size1)
+                .attr("x", 120)
+                .attr("y", r1 / 2 + 50)
+                .text(d => "末班车 " + d["末班车"]);
+        }) */
+
+
+        /* d3.csv("./data/1_gzr_0.csv").then(res => {
+            const width = 3500, height = 5000;
+            let margin = {
+                top: 600,
+                bottom: 600
+            }
+            const svg = d3.select("#container")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("viewBox", `0 0 ${width} ${height}`);
+            let data = res;
+            let inter = ((height - margin.top - margin.bottom) * 2 + (width / 2 - 800) * Math.PI) / (data.length - 1);
+            let r1 = 50;
+            let r2 = 20;
+            svg.append("g")
+                .append("image")
+                .attr("transform", "scale(2,2)")
+                .attr("x", 20)
+                .attr("y", 20)
+                .attr("width", 424)
+                .attr("height", 88)
+                .attr("href", "./logo.jpg")
+            svg.append("g")
+                .append("text")
+                .attr("x", width / 2)
+                .attr("y", 200)
+                .attr("font-size", "100px")
+                .attr("font-weight", 600)
+                .attr("text-anchor", "middle")
+                .text("2号线工作日")
+            svg.append("g")
+                .append("text")
+                .attr("x", width / 2)
+                .attr("y", 400)
+                .attr("font-size", "85px")
+                .attr("font-weight", 600)
+                .attr("text-anchor", "middle")
+                .text("上行（佛祖岭-天河机场）");
+            const arc = d3.arc()
+                .innerRadius(width / 2 - 800)
+                .outerRadius(width / 2 - 800)
+                .startAngle(Math.PI / 2)
+                .endAngle(Math.PI / 2 * 3);
+            svg.append("g")
+                .attr("transform", `translate(${width / 2},${height - margin.bottom})`)
+                .append("path")
+                .attr("d", arc())
+                .attr("fill", "none")
+                .attr("stroke-width", r1 / 2)
+                .attr("stroke", color);
+            svg.append("g")
+                .append("line")
+                .attr("x1", 800)
+                .attr("x2", 800)
+                .attr("y1", margin.top)
+                .attr("y2", height - margin.bottom)
+                .attr("stroke-width", r1 / 2)
+                .attr("stroke", color);
+            svg.append("g")
+                .append("line")
+                .attr("x1", width - 800)
+                .attr("x2", width - 800)
+                .attr("y1", margin.top)
+                .attr("y2", height - margin.bottom)
+                .attr("stroke-width", r1 / 2)
+                .attr("stroke", color);
+            let gs = svg.append("g")
+                .selectAll("g")
+                .data(res)
+                .enter()
+                .append("g")
+                .attr("transform", (d, i) => {
+                    if (i * inter <= (height - margin.top - margin.bottom)) {
+                        return `translate(800,${i * inter + margin.top})`;
+                    } else if (i * inter >= (height - margin.top - margin.bottom) + (width / 2 - 800) * Math.PI) {
+                        return `translate(${width - 800},${(res.length - i - 1) * inter + margin.top})`;
+                    } else {
+                        let a = (i * inter - (height - margin.top - margin.bottom)) / (width / 2 - 800);
+                        return `translate(${800 + (width / 2 - 800) - Math.cos(a) * (width / 2 - 800)},${height - margin.bottom + Math.sin(a) * (width / 2 - 800)})`;
+
+                    }
+                });
+            gs.append("circle")
+                .attr("r", 60)
+                .attr("fill", color)
+            gs.append("circle")
+                .attr("r", 30)
+                .attr("fill", "white");
+            gs.append("text")
+                .attr("x", (d, i) => {
+                    if (i <= res.length / 2 - 1) {
+                        return 120
+                    }
+                    return -120
+                })
+                .attr("text-anchor", (d, i) => {
+                    if (i <= res.length / 2 - 1) {
+                        return "start"
+                    }
+                    return "end"
+                })
+                .attr("y", r1 / 2)
+                .attr("font-size", "85px")
+                .attr("font-weight", 600)
+                .text(d => d["车站"]);
+            gs.append("text")
+                .attr("font-size", "60px")
+                .attr("x", (d, i) => {
+                    if (i <= res.length / 2 - 1) {
+                        return -120
+                    }
+                    return 120
+                })
+                .attr("text-anchor", (d, i) => {
+                    if (i <= res.length / 2 - 1) {
+                        return "end"
+                    }
+                    return "start"
+                })
+                .attr("y", r1 / 2 - 40)
+                .text(d => "首班车 " + d["首班车"]);
+            gs.append("text")
+                .attr("font-size", "60px")
+                .attr("x", (d, i) => {
+                    if (i <= res.length / 2 - 1) {
+                        return -120
+                    }
+                    return 120
+                })
+                .attr("text-anchor", (d, i) => {
+                    if (i <= res.length / 2 - 1) {
+                        return "end"
+                    }
+                    return "start"
+                })
+                .attr("y", r1 / 2 + 40)
+                .text(d => "末班车 " + d["末班车"]);
+
+            //  covertSVG2Image(document.getElementsByTagName("svg")[0],"aaa",width,height,)
+        })
+     */
+    </script>
+
+</body>
+
+</html>
