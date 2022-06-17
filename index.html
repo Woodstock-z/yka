@@ -123,7 +123,7 @@
             reader.readAsText(file_input.files[0], 'gb2312') // input.files[0]为第一个文件
             reader.onload = () => {
                 // console.log(reader.result)
-                data = reader.result.split("\r\n").filter(d => d != "").slice(1).map(d => d.split(","));
+                data = reader.result.split("\n").filter(d => d != "").slice(1).map(d => d.split(","));
                 redraw();
             }
         });
