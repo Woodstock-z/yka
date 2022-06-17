@@ -165,6 +165,7 @@
             })
         }
         function redraw() {
+            console.log(data)
             svg.selectAll("g").remove();
             let data1 = data.filter(d => d[3] == "上行");
             let inter = (height - margin.top - margin.bottom) / (data1.length - 1);
