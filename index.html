@@ -44,8 +44,9 @@
             <div class="m-item">
                 <span>选择布局</span>
                 <select name="" id="layout_selector">
-                    <option value="">一列布局</option>
-                    <option value="">两列布局</option>
+                    <option value="1">高900</option>
+                    <option value="2">高1600</option>
+                    <option value="3">高1800</option>
                 </select>
             </div>
             <div class="m-item">
@@ -66,15 +67,15 @@
             </div>
             <div class="m-item">
                 <span>标题</span>
-                <input type="text" placeholder="1号线工作日">
+                <input type="text" id="title" placeholder="1号线工作日">
             </div>
             <div class="m-item">
                 <span>标题1</span>
-                <input type="text" placeholder="上行方向（周家河-国博中心南）">
+                <input type="text" id="title1" placeholder="上行方向（周家河-国博中心南）">
             </div>
             <div class="m-item">
                 <span>标题2</span>
-                <input type="text" placeholder="下行方向（国博中心南-周家河）">
+                <input type="text" id="title2" placeholder="下行方向（国博中心南-周家河）">
             </div>
 
             <div class="m-item">
@@ -111,7 +112,7 @@
         let color = "#0067a1";
         const line_selector = document.getElementById("line_selector");
         line_selector.addEventListener("change", () => {
-            let value = line_selector.options[line_selector.selectedIndex].value
+            let value = line_selector.options[line_selector.selectedIndex].value;
             color = line_map_color[value];
             redraw();
         });
@@ -123,7 +124,10 @@
             reader.readAsText(file_input.files[0], 'gb2312') // input.files[0]为第一个文件
             reader.onload = () => {
                 // console.log(reader.result)
-                data = reader.result.split("\n").filter(d => d != "").slice(1).map(d => d.split(","));
+                data = reader.result.split("\n").filter(d => d != "").slice(1).map(d => {
+
+                    return d.replace("\r", "").split(",")
+                });
                 redraw();
             }
         });
@@ -131,10 +135,20 @@
         let title = "x号线工作日";
         let title1 = "上行方向（xx-xx）";
         let title2 = "下行方向（xx-xx）";
-
-        
-        /* svg */
-        const width = 3000, height = 4500;
+        document.getElementById("title").addEventListener("change", (e) => {
+            title = e.target.value;
+            redraw();
+        });
+        document.getElementById("title1").addEventListener("change", (e) => {
+            title1 = e.target.value;
+            redraw();
+        });
+        document.getElementById("title2").addEventListener("change", (e) => {
+            title2 = e.target.value;
+            redraw();
+        })
+        /* 布局 */
+        let width = 3000, height = 4500;
         let margin = {
             top: 500,
             bottom: 200
@@ -143,6 +157,7 @@
         let r2 = 18;
         let font_size = "80px";
         let font_size1 = "50px";
+
         const svg = d3.select("#canvas")
             .append("svg")
             .attr("width", width)
@@ -156,7 +171,23 @@
             .attr("height", 88 * 3)
             .attr("href", "./logo.jpg");
 
-
+        let layout = 1;
+        document.getElementById("layout_selector").addEventListener("change", (e) => {
+            let value = e.target.options[e.target.selectedIndex].value;
+            layout = value;
+            if (layout == 1) {
+                height = 4500;
+            } else if(layout == 2) {
+                height = 6000;
+            }else{
+                height = 9000;
+            }
+            svg.attr("width", width)
+                .attr("height", height)
+                .attr("style", `width:${width / 5};height:${height / 5}`)
+                .attr("viewBox", `0 0 ${width} ${height}`);
+            redraw();
+        })
         let logo = new Image()
         logo.src = './logo.jpg';
         logo.onload = function () {
@@ -165,7 +196,9 @@
             })
         }
         function redraw() {
-            console.log(data)
+            if (data.length == 0) {
+                return;
+            }
             svg.selectAll("g").remove();
             let data1 = data.filter(d => d[3] == "上行");
             let inter = (height - margin.top - margin.bottom) / (data1.length - 1);
@@ -224,6 +257,7 @@
                 .attr("x", -120)
                 .attr("y", r1 / 2 + 30)
                 .text(d => "末班车 " + d[2]);
+
             // 下行
             let data2 = data.filter(d => d[3] == "下行");
             inter = (height - margin.top - margin.bottom) / (data2.length - 1);
@@ -268,186 +302,32 @@
             gs1.append("text")
                 .attr("font-size", font_size1)
                 .attr("x", 120)
-                .attr("y", r1 / 2 - 50)
+                .attr("y", r1 / 2 - 30)
                 .text(d => "首班车 " + d[1]);
             gs1.append("text")
                 .attr("font-size", font_size1)
                 .attr("x", 120)
-                .attr("y", r1 / 2 + 50)
-                .text(d => "末班车 " + d[2]);
-
-        }
-        /* Promise.all([d3.csv("16_gzr_1.csv"), d3.csv("16_gzr_1.csv")]).then(([res, res1]) => {
-
-            console.log(res, res1)
-            let inter = (height - margin.top - margin.bottom) / (res.length - 1);
-            let r1 = 40;
-            let r2 = 18;
-            let font_size = "80px";
-            let font_size1 = "50px";
-            svg.append("g")
-                .append("image")
-                .attr("x", 50)
-                .attr("y", 0)
-                .attr("width", 212 * 3)
-                .attr("height", 88 * 3)
-                .attr("href", "./logo.jpg")
-
-            svg.append("g")
-                .append("text")
-                .attr("x", width / 2)
-                .attr("y", 200)
-                .attr("font-size", "100px")
-                .attr("font-weight", 600)
-                .attr("text-anchor", "middle")
-                .text("1号线工作日")
-            svg.append("g")
-                .append("text")
-                .attr("x", width / 4)
-                .attr("y", 350)
-                .attr("font-size", "85px")
-                .attr("font-weight", 600)
-                .attr("text-anchor", "middle")
-                .text("上行方向（周家河-国博中心南）");
-            svg.append("g")
-                .append("line")
-                .attr("x1", 800)
-                .attr("x2", 800)
-                .attr("y1", margin.top)
-                .attr("y2", height - margin.bottom)
-                .attr("stroke-width", r1 / 2)
-                .attr("stroke", color);
-            let gs = svg.append("g")
-                .selectAll("g")
-                .data(res)
-                .enter()
-                .append("g")
-                .attr("transform", (d, i) => `translate(800,${i * inter + margin.top})`);
-            gs.append("circle")
-                .attr("r", r1)
-                .attr("fill", color);
-            gs.append("circle")
-                .attr("r", r2)
-                .attr("fill", "white");
-            gs.append("text")
-                .attr("x", 120)
-                .attr("y", r1 / 2)
-                .attr("font-size", font_size)
-                .attr("font-weight", 600)
-                .text(d => d["车站"]);
-            gs.append("text")
-                .attr("font-size", font_size1)
-                .attr("text-anchor", "end")
-                .attr("x", -120)
-                .attr("y", r1 / 2 - 30)
-                .text(d => "首班车 " + d["首班车"]);
-            gs.append("text")
-                .attr("font-size", font_size1)
-                .attr("text-anchor", "end")
-                .attr("x", -120)
                 .attr("y", r1 / 2 + 30)
-                .text(d => "末班车 " + d["末班车"]);
-
-
-            inter = (height - margin.top - margin.bottom) / (res1.length - 1);
-
-            svg.append("g")
-                .append("text")
-                .attr("x", width / 4 * 3)
-                .attr("y", 350)
-                .attr("font-size", "85px")
-                .attr("font-weight", 600)
-                .attr("text-anchor", "middle")
-                .text("下行方向（国博中心南-周家河）");
-
-            let g1 = svg.append("g")
-                .attr("transform", (d, i) => `translate(${width / 2},${margin.top})`);
-            svg.append("g")
-                .append("line")
-                .attr("x1", width - 800)
-                .attr("x2", width - 800)
-                .attr("y1", margin.top)
-                .attr("y2", height - margin.bottom)
-                .attr("stroke-width", r1 / 2)
-                .attr("stroke", color);
-            let gs1 = svg.append("g")
-                .selectAll("g")
-                .data(res1)
-                .enter()
-                .append("g")
-                .attr("transform", (d, i) => `translate(${width - 800},${i * inter + margin.top})`);
-            gs1.append("circle")
-                .attr("r", r1)
-                .attr("fill", color);
-            gs1.append("circle")
-                .attr("r", r2)
-                .attr("fill", "white");
-            gs1.append("text")
-                .attr("x", -120)
-                .attr("y", r1 / 2)
-                .attr("text-anchor", "end")
-                .attr("font-size", font_size)
-                .attr("font-weight", 600)
-                .text(d => d["车站"]);
-            gs1.append("text")
-                .attr("font-size", font_size1)
-                .attr("x", 120)
-                .attr("y", r1 / 2 - 50)
-                .text(d => "首班车 " + d["首班车"]);
-            gs1.append("text")
-                .attr("font-size", font_size1)
-                .attr("x", 120)
-                .attr("y", r1 / 2 + 50)
-                .text(d => "末班车 " + d["末班车"]);
-        }) */
-
-
-        /* d3.csv("./data/1_gzr_0.csv").then(res => {
-            const width = 3500, height = 5000;
+                .text(d => "末班车 " + d[2]);
+        }
+        function draw1() {
+            svg.selectAll("g").remove();
+            let data1 = data.filter(d => d[3] == "上行");
+            let data2 = data.filter(d => d[3] == "下行");
+            let width = 3000, height = 4500;
             let margin = {
-                top: 600,
-                bottom: 600
+                top: 500,
+                bottom: 200
             }
-            const svg = d3.select("#container")
-                .append("svg")
-                .attr("width", width)
-                .attr("height", height)
-                .attr("viewBox", `0 0 ${width} ${height}`);
-            let data = res;
-            let inter = ((height - margin.top - margin.bottom) * 2 + (width / 2 - 800) * Math.PI) / (data.length - 1);
-            let r1 = 50;
-            let r2 = 20;
-            svg.append("g")
-                .append("image")
-                .attr("transform", "scale(2,2)")
-                .attr("x", 20)
-                .attr("y", 20)
-                .attr("width", 424)
-                .attr("height", 88)
-                .attr("href", "./logo.jpg")
-            svg.append("g")
-                .append("text")
-                .attr("x", width / 2)
-                .attr("y", 200)
-                .attr("font-size", "100px")
-                .attr("font-weight", 600)
-                .attr("text-anchor", "middle")
-                .text("2号线工作日")
-            svg.append("g")
-                .append("text")
-                .attr("x", width / 2)
-                .attr("y", 400)
-                .attr("font-size", "85px")
-                .attr("font-weight", 600)
-                .attr("text-anchor", "middle")
-                .text("上行（佛祖岭-天河机场）");
+
+            let R = width / 2 - 800;
             const arc = d3.arc()
-                .innerRadius(width / 2 - 800)
-                .outerRadius(width / 2 - 800)
+                .innerRadius(R)
+                .outerRadius(R)
                 .startAngle(Math.PI / 2)
                 .endAngle(Math.PI / 2 * 3);
             svg.append("g")
-                .attr("transform", `translate(${width / 2},${height - margin.bottom})`)
+                .attr("transform", `translate(${width / 2},${height - margin.bottom - R})`)
                 .append("path")
                 .attr("d", arc())
                 .attr("fill", "none")
@@ -458,7 +338,7 @@
                 .attr("x1", 800)
                 .attr("x2", 800)
                 .attr("y1", margin.top)
-                .attr("y2", height - margin.bottom)
+                .attr("y2", height - margin.bottom - R)
                 .attr("stroke-width", r1 / 2)
                 .attr("stroke", color);
             svg.append("g")
@@ -466,84 +346,124 @@
                 .attr("x1", width - 800)
                 .attr("x2", width - 800)
                 .attr("y1", margin.top)
-                .attr("y2", height - margin.bottom)
+                .attr("y2", height - margin.bottom - R)
                 .attr("stroke-width", r1 / 2)
                 .attr("stroke", color);
+            let aa = 5;
+            if (data1.length % 2 == 0) {
+                // 偶数
+                aa = 4;
+            } else {
+                aa = 5;
+            }
+            let inter = (height - margin.top - margin.bottom - R) / ((data1.length - aa) / 2 - 1);
+            let sec1 = (data1.length - aa) / 2;
+            let sec2 = sec1 + aa;
             let gs = svg.append("g")
                 .selectAll("g")
-                .data(res)
+                .data(data1)
                 .enter()
                 .append("g")
                 .attr("transform", (d, i) => {
-                    if (i * inter <= (height - margin.top - margin.bottom)) {
+                    if (i < sec1) {
                         return `translate(800,${i * inter + margin.top})`;
-                    } else if (i * inter >= (height - margin.top - margin.bottom) + (width / 2 - 800) * Math.PI) {
-                        return `translate(${width - 800},${(res.length - i - 1) * inter + margin.top})`;
+                    } else if (i < sec2) {
+                        let a = (i - sec1 + 1) * (Math.PI / (aa + 1));
+                        return `translate(${800 + (width / 2 - 800) - Math.cos(a) * (width / 2 - 800)},${height - margin.bottom - R + Math.sin(a) * (width / 2 - 800)})`;
                     } else {
-                        let a = (i * inter - (height - margin.top - margin.bottom)) / (width / 2 - 800);
-                        return `translate(${800 + (width / 2 - 800) - Math.cos(a) * (width / 2 - 800)},${height - margin.bottom + Math.sin(a) * (width / 2 - 800)})`;
-
+                        return `translate(${width - 800},${(data1.length - i - 1) * inter + margin.top})`;
                     }
                 });
+            // return
             gs.append("circle")
-                .attr("r", 60)
+                .attr("r", r1)
                 .attr("fill", color)
             gs.append("circle")
-                .attr("r", 30)
+                .attr("r", r2)
                 .attr("fill", "white");
             gs.append("text")
                 .attr("x", (d, i) => {
-                    if (i <= res.length / 2 - 1) {
-                        return 120
+                    if (i < data1.length / 2) {
+                        return 100
                     }
-                    return -120
+                    return -100
                 })
                 .attr("text-anchor", (d, i) => {
-                    if (i <= res.length / 2 - 1) {
+                    if (i < data1.length / 2) {
                         return "start"
                     }
                     return "end"
                 })
                 .attr("y", r1 / 2)
-                .attr("font-size", "85px")
+                .attr("font-size", font_size)
                 .attr("font-weight", 600)
-                .text(d => d["车站"]);
+                .text((d, i) => d[0])
+                .attr("transform", (d, i) => {
+                    if (i >= sec1 && i < sec2) {
+                        let a = (i - sec1 + 1) * (Math.PI / (aa + 1));
+                        if (a <= Math.PI / 2) {
+                            return `rotate(${- a * 180 / Math.PI})`
+                        } else {
+                            return `rotate(${180 - a * 180 / Math.PI})`
+                        }
+                    }
+                });
             gs.append("text")
-                .attr("font-size", "60px")
+                .attr("font-size", font_size1)
                 .attr("x", (d, i) => {
-                    if (i <= res.length / 2 - 1) {
+                    if(aa == 5 && i == (data1.length + 1) / 2 - 1){
+                        return 0
+                    }
+                    if (i <= data1.length / 2) {
                         return -120
                     }
                     return 120
                 })
                 .attr("text-anchor", (d, i) => {
-                    if (i <= res.length / 2 - 1) {
+                    if(aa == 5 && i == (data1.length + 1) / 2 - 1){
+                        return "middle"
+                    }
+                    if (i <= data1.length / 2) {
                         return "end"
                     }
                     return "start"
                 })
-                .attr("y", r1 / 2 - 40)
-                .text(d => "首班车 " + d["首班车"]);
+                .attr("y", (d,i) => {
+                    if(aa == 5 && i == (data1.length + 1) / 2 - 1){
+                        return 90
+                    }
+                    return r1 / 2 - 30 
+                })
+                .text(d => "首班车 " + d[1]);
             gs.append("text")
-                .attr("font-size", "60px")
+                .attr("font-size", font_size1)
                 .attr("x", (d, i) => {
-                    if (i <= res.length / 2 - 1) {
+                    if(aa == 5 && i == (data1.length + 1) / 2 - 1){
+                        return 0
+                    }
+                    if (i <= data1.length / 2) {
                         return -120
                     }
                     return 120
                 })
                 .attr("text-anchor", (d, i) => {
-                    if (i <= res.length / 2 - 1) {
+                    if(aa == 5 && i == (data1.length + 1) / 2 - 1){
+                        return "middle"
+                    }
+                    if (i <= data1.length / 2) {
                         return "end"
                     }
                     return "start"
                 })
-                .attr("y", r1 / 2 + 40)
-                .text(d => "末班车 " + d["末班车"]);
+                .attr("y", (d,i) => {
+                    if(aa == 5 && i == (data1.length + 1) / 2 - 1){
+                        return 150
+                    }
+                    return r1 / 2 + 30 
+                })
+                .text(d => "末班车 " + d[2]);
+        }
 
-            //  covertSVG2Image(document.getElementsByTagName("svg")[0],"aaa",width,height,)
-        })
-     */
     </script>
 
 </body>
